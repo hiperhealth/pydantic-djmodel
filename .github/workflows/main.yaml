@@ -2,65 +2,71 @@ name: CI
 
 on:
   pull_request:
-    branches: ["main"]
-
+    branches: [main]
   push:
-    branches: ["master", "main"]
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   check-branch:
-    if: ${{ github.event_name == 'pull_request' }}
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    concurrency:
-      group: check-pr-${{ github.ref }}
-      cancel-in-progress: true
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - name: Check if the PR's branch is updated
-        uses: osl-incubator/gh-check-pr-is-updated@1.0.0
+      - uses: osl-incubator/gh-check-pr-is-updated@1.0.0
         with:
           remote_branch: origin/main
           pr_sha: ${{ github.event.pull_request.head.sha }}
+
   linter:
     runs-on: ubuntu-latest
-
-    concurrency:
-      group: ci-linter-${{ github.ref }}
-      cancel-in-progress: true
-
-    defaults:
-      run:
-        shell: bash -l {0}
-
+    timeout-minutes: 15
     steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v4
-
-      - name: Create environment variables files
-        run: |
-          envsubst < .env.tpl > .env
-
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          miniconda-version: "latest"
-          environment-file: conda/dev.yaml
-          channels: conda-forge,nodefaults
-          activate-environment: pydantic-djmodel
-          auto-update-conda: true
-          conda-solver: libmamba
-
-      - name: Install dependencies
+          python-version: '3.12'
+      - name: Install development dependencies
         run: |
-          poetry check
-          poetry config virtualenvs.create false
-          poetry install
+          python -m pip install 'poetry==2.1.4'
+          poetry check --lock
+          poetry install --no-interaction
+      - name: Lint
+        run: poetry run pre-commit run --all-files
+      - name: Build documentation
+        run: poetry run mkdocs build --strict
 
-      - name: Linter
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        include:
+          - python: '3.10'
+            django: 'Django>=5.2,<5.3'
+            pydantic: 'pydantic==2.10.6'
+          - python: '3.12'
+            django: 'Django>=6.0,<6.1'
+            pydantic: 'pydantic>=2.10.6,<3'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Build and check distributions
         run: |
-          pre-commit install
-          pre-commit run --all-files
+          python -m pip install build twine
+          python -m build
+          python -m twine check --strict dist/*
+      - name: Test the installed wheel
+        env:
+          DJANGO_REQUIREMENT: ${{ matrix.django }}
+          PYDANTIC_REQUIREMENT: ${{ matrix.pydantic }}
+        run: |
+          python -m pip install dist/*.whl pytest pytest-django "$DJANGO_REQUIREMENT" "$PYDANTIC_REQUIREMENT"
+          python -m pytest

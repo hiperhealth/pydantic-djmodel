@@ -1,6 +1,6 @@
 [project]
 name = "pydantic-djmodel"
-version = "0.1.0"  # semantic-release
+version = "0.2.0"
 description = "pydantic-djmodel is a Python library that converts Pydantic BaseModels into Django ORM models."
 readme = "README.md"
 authors = [
@@ -9,14 +9,16 @@ authors = [
 license = "MIT"
 requires-python = ">=3.10,<4"
 dependencies = [
-  "typeguard (>=4.0)",
-  "eval-type-backport (>=0.2.2)",
-  "pydantic (>=2.10.6)",
-  "django (>=5)",
+  "pydantic (>=2.10.6,<3)",
+  "django (>=5.2,<7)",
 ]
 
+[project.urls]
+Repository = "https://github.com/hiperhealth/pydantic-djmodel"
+Issues = "https://github.com/hiperhealth/pydantic-djmodel/issues"
+
 [build-system]
-requires = ["poetry-core>=2", "poetry>=2"]
+requires = ["poetry-core>=2,<3"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
@@ -45,21 +47,18 @@ bandit = ">=1.7.5"
 pydocstyle = ">=6.3.0"
 vulture = ">=2.7"
 mccabe = ">=0.6.1"
-ipython = "<8"
-ipykernel = ">=6.0.0"
 Jinja2 = ">=3.1.2"
 mkdocs = ">=1.4.3"
 mkdocs-exclude = ">=1.0.2"
-mkdocs-jupyter = ">=0.24.1"
 mkdocs-literate-nav = ">=0.6.0"
 mkdocs-macros-plugin = ">=0.7.0,<1"
+pymdown-extensions = ">=10.14.3,<11"
 mkdocstrings = ">=0.21.2"
 mkdocstrings-python = ">= 1.1.2"
 mkdocs-gen-files = ">=0.5.0"
 makim = "1.20.0"
 # 'PosixPath' object has no attribute 'endswith'
 virtualenv = "<=20.25.1"
-fhir-resources = ">=8"
 
 
 [tool.bandit]
@@ -74,7 +73,7 @@ include_trailing_comma = true
 skip_glob = ["docs/*", "*.egg-info"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 check_untyped_defs = true
 strict = true
 ignore_missing_imports = true
@@ -87,7 +86,7 @@ exclude = ["scripts/"]
 testpaths = [
     "tests",
 ]
-DJANGO_SETTINGS_MODULE = "pydantic_djmodel._settings"
+DJANGO_SETTINGS_MODULE = "tests.settings"
 
 [tool.ruff]
 line-length = 79

@@ -1,117 +1,113 @@
-"""Main module."""
+"""Build Django ORM models from Pydantic schemas."""
 
 import re
-import sys
 
-from pathlib import Path
-from typing import Union, get_args, get_origin
-
-import django
+from copy import deepcopy
+from functools import partial
+from types import UnionType
+from typing import Any, Union, get_args, get_origin
 
 from django.db import models
 from pydantic import BaseModel
-
-# settings.configure(default_settings="seconddx.settings", DEBUG=True)
-django.setup()
-
-secondddx_path = Path('.').absolute().parent
-sys.path.insert(0, str(secondddx_path))
+from pydantic.fields import FieldInfo
 
 
 def camel_to_snake(name: str) -> str:
-    """
-    Convert a camelCase or PascalCase string to snake_case.
+    """Convert a camelCase or PascalCase name to snake_case."""
+    return re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
 
-    Parameters
-    ----------
-    name : str
-        The string to convert.
 
-    Returns
-    -------
-    str
-        The converted string.
+def _django_field(name: str, field_info: FieldInfo) -> models.Field:
+    annotation: object = field_info.annotation
+    nullable = annotation is Any or annotation is type(None)
+    if get_origin(annotation) in (Union, UnionType):
+        members = get_args(annotation)
+        nullable = type(None) in members or Any in members
+        non_null = tuple(
+            member for member in members if member is not type(None)
+        )
+        if len(non_null) == 1:
+            annotation = non_null[0]
 
-    Notes
-    -----
-    This function is not idempotent. If the input string is already in
-    snake_case, running it through this function will make it lower case.
+    options: dict[str, Any] = {'null': nullable, 'blank': nullable}
+    if field_info.default_factory is not None:
+        if field_info.default_factory_takes_validated_data:
+            raise ValueError(
+                f'{name!r} has a default factory that requires validated data'
+            )
+        options['default'] = field_info.default_factory
+    elif not field_info.is_required():
+        default = field_info.default
+        if isinstance(default, (dict, list)):
+            default = partial(deepcopy, default)
+        options['default'] = default
 
-    Examples
-    --------
-    >>> camel_to_snake("camelCaseExample")
-    "camel_case_example"
-    >>> camel_to_snake("PascalCaseExample")
-    "pascal_case_example"
-    """
-    name = re.sub(  # pyright: ignore[reportGeneralTypeIssues]
-        r'(?<!^)(?=[A-Z])', '_', name
-    )  # Insert _ before uppercase letters (excluding the first)
-    return name.lower()
+    if annotation is str:
+        return models.CharField(max_length=255, **options)
+    if annotation is int:
+        return models.IntegerField(**options)
+    if annotation is float:
+        return models.FloatField(**options)
+    if annotation is bool:
+        return models.BooleanField(**options)
+    return models.JSONField(**options)
 
 
 def pydantic_to_django(
-    pydantic_model: BaseModel, model_name: str, module_name: str = 'seconddx'
-) -> type:
+    pydantic_model: type[BaseModel] | BaseModel,
+    model_name: str,
+    module_name: str | None = None,
+    *,
+    app_label: str | None = None,
+) -> type[models.Model]:
     """
-    Dynamically generates a Django model class from a Pydantic model.
+    Build a Django model class from a Pydantic schema.
+
+    Call once at module scope in the consuming app's models module so Django
+    discovers the class during app loading.
 
     Parameters
     ----------
-    pydantic_model : BaseModel
-        The Pydantic model to generate a Django model from.
+    pydantic_model : type[BaseModel] or BaseModel
+        The Pydantic schema class or an instance of that class.
     model_name : str
-        The name to give the generated Django model class.
+        The name of the generated Django model class.
     module_name : str, optional
-        The module name to use for the generated Django model.
-        Defaults to 'seconddx'.
+        The consuming model module, usually passed as ``__name__``.
+        Django infers the app from this module unless an app label is given.
+    app_label : str, optional
+        The Django app label to use instead of inferring it from the module.
 
     Returns
     -------
-    type
+    type[models.Model]
         The generated Django model class.
+
+    Raises
+    ------
+    ValueError
+        If neither the module nor the app label is given, two fields map to
+        the same name, a field uses a reserved primary-key name, or a default
+        factory requires validated data.
     """
-    fields = {}
+    if not module_name and not app_label:
+        raise ValueError('Pass the Django module_name or app_label')
 
-    for field_name, field_info in pydantic_model.model_fields.items():
-        field_type = field_info.annotation
+    attrs: dict[str, Any] = {'__module__': module_name or __name__}
+    if app_label:
+        attrs['Meta'] = type('Meta', (), {'app_label': app_label})
 
-        field_name = camel_to_snake(field_name)
+    schema = (
+        type(pydantic_model)
+        if isinstance(pydantic_model, BaseModel)
+        else pydantic_model
+    )
+    for name, field_info in schema.model_fields.items():
+        field_name = camel_to_snake(name)
+        if field_name in {'id', 'pk'}:
+            raise ValueError(f'{name!r} maps to reserved field {field_name!r}')
+        if field_name in attrs:
+            raise ValueError(f'Multiple fields map to {field_name!r}')
+        attrs[field_name] = _django_field(name, field_info)
 
-        # Handle Union types (Optional fields)
-        if get_origin(field_type) is Union:
-            field_type = get_args(field_type)[0]  # Take the first valid type
-
-        # Map Pydantic types to Django ORM fields
-        if field_type is str:
-            fields[field_name] = models.CharField(
-                max_length=255, blank=True, null=True
-            )
-        elif field_type is int:
-            fields[field_name] = models.IntegerField(blank=True, null=True)
-        elif field_type is float:
-            fields[field_name] = models.FloatField(blank=True, null=True)
-        elif field_type is bool:
-            fields[field_name] = models.BooleanField(default=False)
-        elif get_origin(field_type) is list:
-            fields[field_name] = models.JSONField(
-                blank=True, null=True
-            )  # Lists stored as JSON
-        else:
-            fields[field_name] = models.JSONField(
-                blank=True, null=True
-            )  # Default to JSONField for unknown types
-
-    # Add common FHIR fields
-    # fields["fhir_id"] = models.CharField(
-    # max_length=64, unique=True, blank=True, null=True)
-    # fields["image"] = models.ImageField(upload_to=f"{
-    # model_name.lower()}s/", blank=True, null=True)
-    # fields["original_language"] = models.CharField(
-    # max_length=10, blank=True, null=True)
-
-    # Ensure Django recognizes the generated model
-    fields['__module__'] = module_name
-
-    # Create Django model dynamically
-    return type(model_name, (models.Model,), fields)
+    return type(model_name, (models.Model,), attrs)

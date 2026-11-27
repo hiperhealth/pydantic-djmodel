@@ -1,189 +1,24 @@
 # Contributing
 
-In order to be able to contribute, it is important that you understand the
-project layout.
+Fork the [upstream repository](https://github.com/hiperhealth/pydantic-djmodel)
+and create a working branch from its `main` branch. The package lives in
+`src/pydantic_djmodel`, and the sample Django app lives in `tests`.
 
-This project uses the _src layout_, which means that the package code is located
-at `./src/pydantic_djmodel`.
-
-For my information, check the official documentation:
-<https://packaging.python.org/en/latest/discussions/src-layout-vs-flat-layout/>
-
-In addition, you should know that to build our package we use
-[Poetry](https://python-poetry.org/), it's a Python package management tool that
-simplifies the process of building and publishing Python packages. It allows us
-to easily manage dependencies, virtual environments and package versions. Poetry
-also includes features such as dependency resolution, lock files and publishing
-to PyPI. Overall, Poetry streamlines the process of managing Python packages,
-making it easier for us to create and share our code with others.
-
-Contributions are welcome, and they are greatly appreciated! Every little bit
-helps, and credit will always be given.
-
-You can contribute in many ways:
-
-## Types of Contributions
-
-### Report Bugs
-
-Report bugs at /issues.
-
-If you are reporting a bug, please include:
-
-- Your operating system name and version.
-- Any details about your local setup that might be helpful in troubleshooting.
-- Detailed steps to reproduce the bug.
-
-### Fix Bugs
-
-Look through the GitHub issues for bugs. Anything tagged with “bug” and “help
-wanted” is open to whoever wants to implement it.
-
-### Implement Features
-
-Look through the GitHub issues for features. Anything tagged with “enhancement”
-and “help wanted” is open to whoever wants to implement it.
-
-### Write Documentation
-
-pydantic-djmodel could always use more documentation, whether as part of
-the official pydantic-djmodel docs, in docstrings, or even on the web in
-blog posts, articles, and such.
-
-### Submit Feedback
-
-The best way to send feedback is to file an issue at /issues.
-
-If you are proposing a feature:
-
-- Explain in detail how it would work.
-- Keep the scope as narrow as possible, to make it easier to implement.
-- Remember that this is a volunteer-driven project, and that contributions are
-  welcome :)
-
-## Get Started
-
-Ready to contribute? Here’s how to set up `pydantic-djmodel` for local
-development.
-
-1. Fork the `pydantic-djmodel` repo on GitHub.
-2. Clone your fork locally and change to the directory of your project:
+Use Python 3.12 with Poetry 2 for local development:
 
 ```bash
-$ git clone git@github.com:your_name_here/pydantic-djmodel.git
-$ cd pydantic-djmodel/
+poetry env use python3.12
+poetry install
+poetry run pre-commit install
+poetry run pre-commit run --all-files
+poetry run pytest
+poetry run mkdocs build --strict
+poetry build
 ```
 
-### Prepare and use virtual environment
-
-If you don't have yet conda installed in your machine, you can check the
-installation steps here:
-<https://github.com/conda-forge/miniforge?tab=readme-ov-file#download> After
-that, ensure that conda is already available in your terminal session and run:
-
-```bash
-$ conda env create env create --file conda/dev.yaml
-$ conda activate pydantic_djmodel
-```
-
-Note: you can use `mamba env create` instead, if you have it already installed,
-in order to boost the installation step.
-
-### Install the dependencies
-
-Now, you can already install the dependencies for the project:
-
-````bash
-$ poetry install
-```### Create a Development Branch
-
-Make a dedicated branch for your bugfix or feature.
-
-```bash
-$ git checkout -b name-of-your-bugfix-or-feature
-````
-
-### Make Changes Locally
-
-You are now ready to implement your changes or improvements.
-
-### Install and Use Pre-commit Hooks
-
-- `pydantic-djmodel` uses a set of `pre-commit` hooks to improve code
-  quality. The hooks can be installed locally using:
-
-```bash
-$ pre-commit install
-```
-
-This would run the checks every time a `git commit` is executed locally.
-Usually, the verification will only run on the files modified by that commit,
-but the verification can also be triggered for all the files using:
-
-```bash
-$ pre-commit run --all-files
-```
-
-If you would like to skip the failing checks and push the code for further
-discussion, use the `--no-verify` option with `git commit`.
-
-### Unit Testing with `pytest`
-
-This project uses `pytest` as a testing tool. `pytest` is responsible for
-testing the code, whose configuration is available in pyproject.toml.
-Additionally, this project also uses `pytest-cov` to calculate the coverage of
-these unit tests. For more information, check the section about tests later in
-this document.
-
-### Commit your changes and push your branch to GitHub
-
-```bash
-$ git add .
-$ git commit -m "Your detailed description of your changes.""
-$ git push origin name-of-your-bugfix-or-feature
-```
-
-- Submit a pull request through the GitHub website.
-
-## Pull Request Guidelines
-
-Before you submit a pull request, check that it meets these guidelines:
-
-1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put your
-   new functionality into a function with a docstring, and add the feature to
-   the list in README.rst.
-3. The pull request should work for Python >= 3.8.
-
-## Running tests locally
-
-The tests can be executed using the `test` dependencies of
-`pydantic-djmodel` in the following way:
-
-```bash
-$ python -m pytest
-```
-
-### Running tests with coverage locally
-
-The coverage value can be obtained while running the tests using `pytest-cov` in
-the following way:
-
-```bash
-$ python -m pytest --cov=pydantic-djmodel tests/
-```
-
-A much more detailed guide on testing with `pytest` is available
-[here](https://docs.pytest.org/en/8.0.x/how-to/index.html).
-
-## Automation Tasks with Makim
-
-This project uses `makim` as an automation tool. Please, check the `.makim.yaml`
-file to check all the tasks available or run:
-
-```bash
-$ makim --help
-```
+The pytest suite creates an SQLite database and checks both migration
+generation and an ORM write and read. Open issues and pull requests in the
+[upstream repository](https://github.com/hiperhealth/pydantic-djmodel).
 
 ## Release
 
