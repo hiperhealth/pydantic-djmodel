@@ -1,39 +1,89 @@
-# Installation
+# Installation and usage
 
-## Stable release
-
-To install pydantic-djmodel, run this command in your terminal:
-
-```bash
-pip install pydantic-djmodel
-```
-
-This is the preferred method to install pydantic-djmodel, as it will
-always install the most recent stable release.
-
-If you don't have [pip](https://pip.pypa.io) installed, this
-[Python installation guide](http://docs.python-guide.org/en/latest/starting/installation/)
-can guide you through the process.
-
-## From sources
-
-The sources for pydantic-djmodel can be downloaded from the
-[Github repo]().
-
-You can either clone the public repository:
+Use Python 3.10 or later, Pydantic 2.10.6 or later in the 2.x series, and
+Django 5.2 or 6.x. Django 6.0 requires Python 3.12 or later.
 
 ```bash
-git clone https://github.com/MYORG/MYREPO
+python -m pip install "pydantic-djmodel>=0.2.0"
 ```
 
-Or download the [tarball](/tarball/main):
+To install a specific commit from GitHub, use its commit SHA:
 
 ```bash
-curl -OJL /tarball/main
+python -m pip install "pydantic-djmodel @ git+https://github.com/hiperhealth/pydantic-djmodel.git@<commit-sha>"
 ```
 
-Once you have a copy of the source, you can install it with:
+## Add a model to your app
+
+In `records/models.py`, where `records` is listed in your Django project's
+`INSTALLED_APPS`:
+
+```python
+from pydantic import BaseModel, Field
+from pydantic_djmodel.core import pydantic_to_django
+
+
+class RecordSchema(BaseModel):
+    title: str
+    score: float | None = None
+    tags: list[str] = Field(default_factory=list)
+
+
+Record = pydantic_to_django(RecordSchema, "Record", __name__)
+```
+
+Call the factory once at module scope. Passing `__name__` lets Django infer
+the app from the module. For a module outside the app, pass
+`app_label="records"` explicitly and make sure your app loads the generated
+model during startup.
 
 ```bash
-poetry install
+python manage.py check
+python manage.py makemigrations records
+python manage.py migrate
 ```
+
+In `python manage.py shell`:
+
+```python
+from records.models import Record, RecordSchema
+
+data = RecordSchema(title="First record", tags=["example"])
+saved = Record.objects.create(**data.model_dump(mode="json"))
+assert Record.objects.get(pk=saved.pk).tags == ["example"]
+```
+
+## Field mapping
+
+| Pydantic annotation | Django field |
+| --- | --- |
+| `str` | `CharField(max_length=255)` |
+| `int` | `IntegerField` |
+| `float` | `FloatField` |
+| `bool` | `BooleanField` |
+| Collections, nested values, heterogeneous unions, and other types | `JSONField` |
+
+`T | None` and `Optional[T]` use the field for `T` with database nulls
+enabled. A heterogeneous union that includes `None` uses a nullable JSON
+field. Django receives declared defaults and zero-argument, migration-serializable
+factories such as `list` and `dict`. JSON field defaults and factory return
+values must be JSON-compatible. Factories that need validated data cannot
+be used on a schema passed to the converter.
+
+Field names are converted to snake case. If a field changes names during
+conversion, pass its Django name explicitly when calling the ORM.
+Django keeps its own primary key. To accept input named `id` or `pk`, use a
+separate Pydantic field name such as `external_id` and set a Pydantic alias.
+
+Validate the input with Pydantic and serialize nested values with
+`model_dump(mode="json")` before writing JSON fields. Pydantic validators,
+constraints, and relationships are outside the generated Django model.
+Use regular Django models for fields that require database relationships or
+specialized storage.
+
+## Upgrade from 0.1.0
+
+Pass the consuming model module or an app label when generating a model.
+Generate and review Django migrations before applying them to existing data.
+Fields with annotations that exclude `None` now generate non-nullable
+columns. Backfill existing null values before enforcing the new constraints.

@@ -1,6 +1,5 @@
 site_name: pydantic-djmodel
-site_url: https://pydantic-djmodel.com
-repo_url: https://github.com/MYORG/MYREPO
+repo_url: https://github.com/hiperhealth/pydantic-djmodel
 docs_dir: ./docs/
 site_dir: ./build/
 # extra_css:
@@ -13,7 +12,6 @@ nav:
   - Contributing: contributing.md
   # from gen-files
   - API: api/
-  - Notebook page: example.ipynb
 theme:
   name: readthedocs
 
@@ -30,7 +28,7 @@ theme:
     repo: fontawesome/brands/github
   # note: the path should be investigate a bit more
   logo: images/logo.png
-  favicon: images/favicon.png
+  favicon: images/favicon.ico
   palette:
     scheme: slate
     primary: white
@@ -54,8 +52,6 @@ plugins:
         python:
           paths: [./src]
 
-          import:
-            - https://docs.python.org/3/objects.inv
           options:
             docstring_options:
               ignore_init_summary: true
@@ -77,12 +73,6 @@ plugins:
             show_symbol_type_toc: true
             signature_crossrefs: true
             summary: true
-  - mkdocs-jupyter:
-      execute: false
-      ignore:
-        - "*.py"
-      include_source: true
-      theme: dark
 markdown_extensions:
   - admonition
   - attr_list
@@ -91,12 +81,6 @@ markdown_extensions:
   - footnotes
   - md_in_html
   - meta
-  - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
-      options:
-        custom_icons:
-          - docs/static/icons
   - pymdownx.details
   - pymdownx.highlight:
       pygments_lang_class: true
