@@ -40,6 +40,10 @@ jobs:
           channels: conda-forge,nodefaults
           activate-environment: pydantic-djmodel
           conda-solver: libmamba
+      - name: Build and check distributions
+        run: |
+          poetry build
+          python -m twine check --strict dist/*
       - name: Install development dependencies
         run: |
           poetry check --lock
@@ -48,10 +52,6 @@ jobs:
         run: poetry run pre-commit run --all-files
       - name: Build documentation
         run: poetry run mkdocs build --strict
-      - name: Build and check distributions
-        run: |
-          poetry build
-          python -m twine check --strict dist/*
       - uses: actions/upload-artifact@v4
         with:
           name: distributions
