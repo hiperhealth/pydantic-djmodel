@@ -26,24 +26,45 @@ jobs:
   linter:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash -el {0}
+    env:
+      POETRY_VIRTUALENVS_CREATE: 'false'
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: '3.12'
+          miniconda-version: latest
+          environment-file: conda/dev.yaml
+          channels: conda-forge,nodefaults
+          activate-environment: pydantic-djmodel
+          conda-solver: libmamba
       - name: Install development dependencies
         run: |
-          python -m pip install 'poetry==2.1.4'
           poetry check --lock
           poetry install --no-interaction
       - name: Lint
         run: poetry run pre-commit run --all-files
       - name: Build documentation
         run: poetry run mkdocs build --strict
+      - name: Build and check distributions
+        run: |
+          poetry build
+          python -m twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+          if-no-files-found: error
 
   tests:
+    needs: linter
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash -el {0}
     strategy:
       matrix:
         include:
@@ -55,14 +76,17 @@ jobs:
             pydantic: 'pydantic>=2.10.6,<3'
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: conda-incubator/setup-miniconda@v3
         with:
+          miniconda-version: latest
+          channels: conda-forge,nodefaults
+          activate-environment: pydantic-djmodel-test
+          conda-solver: libmamba
           python-version: ${{ matrix.python }}
-      - name: Build and check distributions
-        run: |
-          python -m pip install build twine
-          python -m build
-          python -m twine check --strict dist/*
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
       - name: Test the installed wheel
         env:
           DJANGO_REQUIREMENT: ${{ matrix.django }}

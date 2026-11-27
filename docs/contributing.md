@@ -4,11 +4,12 @@ Fork the [upstream repository](https://github.com/hiperhealth/pydantic-djmodel)
 and create a working branch from its `main` branch. The package lives in
 `src/pydantic_djmodel`, and the sample Django app lives in `tests`.
 
-Use Python 3.12 with Poetry 2 for local development:
+Create the Conda development environment and install the project with Poetry.
 
 ```bash
-poetry env use python3.12
-poetry install
+conda env create --file conda/dev.yaml
+conda activate pydantic-djmodel
+POETRY_VIRTUALENVS_CREATE=false poetry install
 poetry run pre-commit install
 poetry run pre-commit run --all-files
 poetry run pytest
