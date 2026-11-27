@@ -1,6 +1,8 @@
 name: Publish to PyPI
 
 on:
+  pull_request:
+    branches: [main]
   push:
     tags: ['v*']
 
@@ -12,14 +14,22 @@ jobs:
     if: github.repository == 'hiperhealth/pydantic-djmodel'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: '3.12'
+          miniconda-version: latest
+          environment-file: conda/release.yaml
+          channels: conda-forge,nodefaults
+          activate-environment: pydantic-djmodel-release
+          conda-solver: libmamba
       - name: Check the release tag
+        if: github.event_name == 'push'
         run: |
           git merge-base --is-ancestor HEAD origin/main
           python - <<'PY'
@@ -35,16 +45,17 @@ jobs:
           PY
       - name: Build and check distributions
         run: |
-          python -m pip install build twine
-          python -m build
+          poetry build
           python -m twine check --strict dist/*
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
         with:
           name: distributions
           path: dist/
           if-no-files-found: error
 
   publish:
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -188,8 +188,9 @@ $ makim --help
 ## Release
 
 The [upstream release workflow](https://github.com/hiperhealth/pydantic-djmodel/blob/main/.github/workflows/release.yaml)
-publishes tags that match the version in `pyproject.toml` and point to a
-commit on upstream `main`.
+builds wheel and source distributions with Poetry in the Conda release
+environment. Publishing requires a tag that matches the version in
+`pyproject.toml` and points to a commit on upstream `main`.
 
 Before the first run, a PyPI project owner must
 [add a GitHub Actions trusted publisher](https://docs.pypi.org/trusted-publishers/adding-a-publisher/)
