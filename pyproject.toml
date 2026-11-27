@@ -74,7 +74,7 @@ include_trailing_comma = true
 skip_glob = ["docs/*", "*.egg-info"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.12"
 check_untyped_defs = true
 strict = true
 ignore_missing_imports = true

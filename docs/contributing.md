@@ -187,44 +187,25 @@ $ makim --help
 
 ## Release
 
-This project uses semantic-release in order to cut a new release based on the
-commit-message.
+The [upstream release workflow](https://github.com/hiperhealth/pydantic-djmodel/blob/main/.github/workflows/release.yaml)
+builds wheel and source distributions with Poetry in the Conda release
+environment. Publishing requires a tag that matches the version in
+`pyproject.toml` and points to a commit on upstream `main`.
 
-### Commit message format
+Before the first run, a PyPI project owner must
+[add a GitHub Actions trusted publisher](https://docs.pypi.org/trusted-publishers/adding-a-publisher/)
+to the existing `pydantic-djmodel` PyPI project.
 
-**semantic-release** uses the commit messages to determine the consumer impact
-of changes in the codebase. Following formalized conventions for commit
-messages, **semantic-release** automatically determines the next
-[semantic version](https://semver.org) number, generates a changelog and
-publishes the release.
+| Setting | Value |
+| --- | --- |
+| Owner | `hiperhealth` |
+| Repository | `pydantic-djmodel` |
+| Workflow filename | `release.yaml` |
+| Environment | `pypi` |
 
-By default, **semantic-release** uses
-[Angular Commit Message Conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#-commit-message-format).
-The commit message format can be changed with the `preset` or `config` options\_
-of the
-[@semantic-release/commit-analyzer](https://github.com/semantic-release/commit-analyzer#options)
-and
-[@semantic-release/release-notes-generator](https://github.com/semantic-release/release-notes-generator#options)
-plugins.
-
-Tools such as [commitizen](https://github.com/commitizen/cz-cli) or
-[commitlint](https://github.com/conventional-changelog/commitlint) can be used
-to help contributors and enforce valid commit messages.
-
-The table below shows which commit message gets you which release type when
-`semantic-release` runs (using the default configuration):
-
-| Commit message                                                 | Release type     |
-| -------------------------------------------------------------- | ---------------- |
-| `fix(pencil): stop graphite breaking when pressure is applied` | Fix Release      |
-| `feat(pencil): add 'graphiteWidth' option`                     | Feature Release  |
-| `perf(pencil): remove graphiteWidth option`                    | Chore            |
-| `feat(pencil)!: The graphiteWidth option has been removed`     | Breaking Release |
-
-Note: For a breaking change release, uses `!` at the end of the message prefix.
-
-source:
-<https://github.com/semantic-release/semantic-release/blob/master/README.md#commit-message-format>
-
-As this project uses the `squash and merge` strategy, ensure to apply the commit
-message format to the PR's title.
+1. Update the version in `pyproject.toml` and the package's source version
+   fallback. Update the changelog and wait for upstream CI to pass.
+2. Create and push a new tag matching the version, such as `v0.2.0`, on
+   the verified commit on upstream `main`.
+3. After the workflow finishes, install the new version from PyPI in a
+   clean environment and run the [usage example](installation.md).
