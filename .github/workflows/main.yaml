@@ -51,7 +51,7 @@ jobs:
             django: 'Django>=5.2,<5.3'
             pydantic: 'pydantic==2.10.6'
           - python: '3.12'
-            django: 'Django>=6.0,<6.1'
+            django: 'Django>=6,<7'
             pydantic: 'pydantic>=2.10.6,<3'
     steps:
       - uses: actions/checkout@v6
