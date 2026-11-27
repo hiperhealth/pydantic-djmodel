@@ -1,62 +1,61 @@
-name: Release
+name: Publish to PyPI
+
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    tags: ['v*']
+
+permissions:
+  contents: read
 
 jobs:
-  release:
-    if: ${{ !github.event.pull_request.draft }}
-    name: Release
+  build:
+    if: github.repository == 'hiperhealth/pydantic-djmodel'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
-    defaults:
-      run:
-        shell: bash -el {0}
-
     steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v4
-
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: actions/checkout@v6
         with:
-          miniconda-version: "latest"
-          environment-file: conda/release.yaml
-          channels: conda-forge,nodefaults
-          activate-environment: pydantic-djmodel-release
-          auto-update-conda: true
-          conda-solver: libmamba
-
-      - name: Create file with environment variables
-        run: touch .env
-
-      - name: Install dependencies
-        run: poetry install
-
-      - name: Update npm
-        run: npm -g update npm
-
-      - name: Run semantic release (for tests)
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: makim release.dry
-
-      - name: Release command
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check the release tag
         run: |
-          makim release.ci
+          git merge-base --is-ancestor HEAD origin/main
+          python - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
 
-      - name: Generate documentation with changes from semantic-release
-        run: makim docs.build
-
-      - name: GitHub Pages action
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        uses: peaceiris/actions-gh-pages@v3.5.9
+          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          expected = f"v{project['version']}"
+          actual = os.environ["GITHUB_REF_NAME"]
+          if actual != expected:
+              raise SystemExit(f"Expected tag {expected}, got {actual}")
+          PY
+      - name: Build and check distributions
+        run: |
+          python -m pip install build twine
+          python -m build
+          python -m twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build
+          name: distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pydantic-djmodel/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
